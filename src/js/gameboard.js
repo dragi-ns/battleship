@@ -1,14 +1,14 @@
 /* eslint-disable no-continue */
 import Ship from './ship';
 
+export const GRID_SIZE = 10;
+
 export const Orientation = Object.freeze({
   HORIZONTAL: 0,
   VERTICAL: 1,
 });
 
-function Gameboard() {
-  const GRID_SIZE = 10;
-
+export default function Gameboard() {
   const ships = [];
 
   function buildGrid() {
@@ -118,5 +118,3 @@ function Gameboard() {
     isFleetGone,
   };
 }
-
-export default Gameboard;

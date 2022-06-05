@@ -1,4 +1,4 @@
-function Ship({ name, length }) {
+export default function Ship({ name, length }) {
   const positions = Array(length).fill(false);
 
   function getPositions() {
@@ -21,5 +21,3 @@ function Ship({ name, length }) {
     isSunk,
   };
 }
-
-export default Ship;
