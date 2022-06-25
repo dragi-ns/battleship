@@ -1,5 +1,102 @@
+/**************************
+ * Resets                 *
+ **************************/
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+*:focus-visible,
+*:focus-visible::before,
+*:focus-visible::after {
+  outline: 2px solid hsl(var(--accent-color));
+}
+
+body,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin: 0;
+}
+
+input,
+button {
+  font: inherit;
+  text-transform: inherit;
+}
+
+button {
+  padding: 0.5rem;
+  cursor: pointer;
+  border: 2px solid black;
+  background-color: transparent;
+  transition: all 250ms ease-in-out;
+}
+
+button:hover,
+button:focus-visible {
+  background-color: black;
+  color: white;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+:root {
+  height: -webkit-fill-available;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: -webkit-fill-available;
+  overflow-x: hidden;
+}
+
+.container {
+  width: 85%;
+  height: 100%;
+  margin: 0 auto;
+}
+
+/**************************
+ * Primary header         *
+ **************************/
+
+.primary-header {
+  padding: 1rem 0;
+}
+
+.logo {
+  --char-gap: clamp(10px, 1vw, 30px);
+  --cell-gap: clamp(2px, 0.1vw, 6px);
+  --cell-size: clamp(5px, 0.7vw, 15px);
+}
+
+.logo .cell.marked {
+  border: 2px solid black;
+}
+
+main {
+  margin: 1rem 0;
+  flex: 1;
+}
+
+/**************************
+ * Primary footer         *
+ **************************/
+
+.primary-footer {
+  padding: 1rem 0;
+  text-align: center;
 }
