@@ -1,4 +1,5 @@
 import { areValidCoordinates, getRandomInt } from './util';
+import { Status } from './gameboard';
 
 export default function Player({ name }) {
   return {
@@ -127,13 +128,13 @@ export function isBot(player) {
 
   function lastMoveFeedback(attack, gridSize) {
     const lastMove = playedMoves[playedMoves.length - 1];
-    if (attack.status === 'miss') {
+    if (attack.status === Status.MISS) {
       if (hitCount > 1) {
         possibleMoves = [];
         const lastHitMove = playedMoves[playedMoves.length - 2];
         generatePossibleMoves(lastHitMove, gridSize, true);
       }
-    } else if (attack.status === 'hit') {
+    } else if (attack.status === Status.HIT) {
       hitCount += 1;
       if (hitCount === 1) {
         initialHitMove = lastMove;
@@ -141,13 +142,13 @@ export function isBot(player) {
         possibleMoves = [];
       }
       generatePossibleMoves(lastMove, gridSize);
-    } else if (attack.status === 'sunk') {
+    } else if (attack.status === Status.SUNK) {
       hitCount = 0;
       possibleMoves = [];
       initialHitMove = null;
-      attack.adjacentCoordinates.forEach((coordinate) => {
-        if (!alreadyPlayed(coordinate)) {
-          playedMoves.push(coordinate);
+      attack.adjacentCoords.forEach((coord) => {
+        if (!alreadyPlayed(coord)) {
+          playedMoves.push(coord);
         }
       });
     }
