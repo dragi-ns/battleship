@@ -13,10 +13,12 @@ describe('gameboard public api', () => {
     expect(Object.keys(gameboard)).toEqual([
       'getGrid',
       'getCellData',
+      'getFleet',
       'canPlaceShip',
       'placeShip',
       'placeShipsRandom',
       'moveShip',
+      'rotateShip',
       'receiveAttack',
       'isFleetSunk',
     ]);
@@ -24,11 +26,15 @@ describe('gameboard public api', () => {
 });
 
 describe('gameboard getGrid', () => {
-  test('should return 2d based on the GRID_SIZE', () => {
+  test('should return flat array based on the GRID_SIZE', () => {
     const grid = gameboard.getGrid();
+    expect(grid.length).toBe(GRID_SIZE * GRID_SIZE);
+  });
+
+  test('should return 2d array based on the GRID_SIZE', () => {
+    const grid = gameboard.getGrid(true);
     expect(grid.length).toBe(GRID_SIZE);
     expect(grid[0].length).toBe(GRID_SIZE);
-    expect(grid.flat().every((cell) => cell.status === Status.EMPTY));
   });
 });
 
@@ -41,6 +47,32 @@ describe('gameboard getCellData', () => {
     expect(gameboard.getCellData({ x: 0, y: 0 })).toEqual({
       status: Status.EMPTY,
     });
+  });
+});
+
+describe('gameboard getFleet', () => {
+  test('should return an empty array if there are no ships on the gameboard', () => {
+    expect(gameboard.getFleet().length).toBe(0);
+  });
+
+  test('should return an array of ships that are currently on the gameboard', () => {
+    const ship = gameboard.placeShip(
+      { x: 0, y: 0 },
+      Orientation.HORIZONTAL,
+      Ship({
+        name: 'Aircraft Carrier',
+        length: 5,
+      })
+    );
+    const ship2 = gameboard.placeShip(
+      { x: 9, y: 9 },
+      Orientation.HORIZONTAL,
+      Ship({
+        name: 'Submarine',
+        length: 1,
+      })
+    );
+    expect(gameboard.getFleet()).toEqual([ship, ship2]);
   });
 });
 
@@ -82,10 +114,14 @@ describe('gameboard canPlaceShip', () => {
   });
 
   test('should return false if ships are overlapping', () => {
-    gameboard.placeShip({ x: 0, y: 0 }, Orientation.HORIZONTAL, {
-      name: 'Aircraft Carrier',
-      length: 5,
-    });
+    gameboard.placeShip(
+      { x: 0, y: 0 },
+      Orientation.HORIZONTAL,
+      Ship({
+        name: 'Aircraft Carrier',
+        length: 5,
+      })
+    );
     const isEnoughRoom = gameboard.canPlaceShip(
       { x: 3, y: 1 },
       Orientation.VERTICAL,
@@ -95,10 +131,14 @@ describe('gameboard canPlaceShip', () => {
   });
 
   test('should return false if there is not at least one square space between ships', () => {
-    gameboard.placeShip({ x: 0, y: 0 }, Orientation.HORIZONTAL, {
-      name: 'Aircraft Carrier',
-      length: 5,
-    });
+    gameboard.placeShip(
+      { x: 0, y: 0 },
+      Orientation.HORIZONTAL,
+      Ship({
+        name: 'Aircraft Carrier',
+        length: 5,
+      })
+    );
     const isEnoughRoom = gameboard.canPlaceShip(
       { x: 5, y: 1 },
       Orientation.VERTICAL,
@@ -108,10 +148,14 @@ describe('gameboard canPlaceShip', () => {
   });
 
   test('should return true if there is at least one square space between ships', () => {
-    gameboard.placeShip({ x: 0, y: 0 }, Orientation.HORIZONTAL, {
-      name: 'Aircraft Carrier',
-      length: 5,
-    });
+    gameboard.placeShip(
+      { x: 0, y: 0 },
+      Orientation.HORIZONTAL,
+      Ship({
+        name: 'Aircraft Carrier',
+        length: 5,
+      })
+    );
     const isEnoughRoom = gameboard.canPlaceShip(
       { x: 6, y: 1 },
       Orientation.VERTICAL,
@@ -121,15 +165,19 @@ describe('gameboard canPlaceShip', () => {
   });
 
   test('should ignore area of a ship that is passed', () => {
-    const ship = gameboard.placeShip({ x: 0, y: 0 }, Orientation.HORIZONTAL, {
-      name: 'Aircraft Carrier',
-      length: 5,
-    });
+    const ship = gameboard.placeShip(
+      { x: 0, y: 0 },
+      Orientation.HORIZONTAL,
+      Ship({
+        name: 'Aircraft Carrier',
+        length: 5,
+      })
+    );
     const isEnoughRoom = gameboard.canPlaceShip(
       { x: 0, y: 0 },
       Orientation.VERTICAL,
       5,
-      ship
+      ship.id
     );
     expect(isEnoughRoom).toBe(true);
   });
@@ -137,11 +185,15 @@ describe('gameboard canPlaceShip', () => {
 
 describe('gameboard placeShip', () => {
   test('should correctly place a ship at the specific coordinates horizontally', () => {
-    const ship = gameboard.placeShip({ x: 0, y: 0 }, Orientation.HORIZONTAL, {
-      name: 'Aircraft Carrier',
-      length: 5,
-    });
-    const grid = gameboard.getGrid();
+    const ship = gameboard.placeShip(
+      { x: 0, y: 0 },
+      Orientation.HORIZONTAL,
+      Ship({
+        name: 'Aircraft Carrier',
+        length: 5,
+      })
+    );
+    const grid = gameboard.getGrid(true);
     expect(
       grid[0]
         .slice(0, 5)
@@ -150,23 +202,31 @@ describe('gameboard placeShip', () => {
   });
 
   test('should correctly place a ship at the specific coordinates vertically', () => {
-    const ship = gameboard.placeShip({ x: 0, y: 0 }, Orientation.VERTICAL, {
-      name: 'Aircraft Carrier',
-      length: 5,
-    });
-    const grid = gameboard.getGrid();
+    const ship = gameboard.placeShip(
+      { x: 0, y: 0 },
+      Orientation.VERTICAL,
+      Ship({
+        name: 'Aircraft Carrier',
+        length: 5,
+      })
+    );
+    const grid = gameboard.getGrid(true);
     expect(
       grid
         .slice(0, 5)
-        .every((row) => row[0].status === Status.BUSY && row[0].status === ship)
-    );
+        .every((row) => row[0].status === Status.BUSY && row[0].ship === ship)
+    ).toBe(true);
   });
 
   test('should return null if it cannot place a ship at the specific coordinates', () => {
-    const ship = gameboard.placeShip({ x: 8, y: 8 }, Orientation.VERTICAL, {
-      name: 'Aircraft Carrier',
-      length: 5,
-    });
+    const ship = gameboard.placeShip(
+      { x: 8, y: 8 },
+      Orientation.VERTICAL,
+      Ship({
+        name: 'Aircraft Carrier',
+        length: 5,
+      })
+    );
     expect(ship).toBe(null);
   });
 });
@@ -179,7 +239,7 @@ describe('gameboard moveShip', () => {
     });
     gameboard.placeShip({ x: 0, y: 0 }, Orientation.VERTICAL, ship);
     gameboard.moveShip({ x: 0, y: 0 }, { i: 9, j: 9 });
-    const grid = gameboard.getGrid();
+    const grid = gameboard.getGrid(true);
     expect(grid[0][0].status).toBe(Status.EMPTY);
     expect(grid[9][9].status).toBe(Status.BUSY);
     expect(grid[9][9].ship).toEqual(ship);
@@ -192,13 +252,54 @@ describe('gameboard moveShip', () => {
     });
     gameboard.placeShip({ x: 0, y: 0 }, Orientation.HORIZONTAL, ship);
     gameboard.moveShip({ x: 0, y: 0 }, { i: 0, j: 0 }, Orientation.VERTICAL);
-    const grid = gameboard.getGrid();
-    expect(grid[0].slice(1, 5).every((cell) => cell.status === Status.EMPTY));
+    const grid = gameboard.getGrid(true);
+    expect(
+      grid[0].slice(1, 5).every((cell) => cell.status === Status.EMPTY)
+    ).toBe(true);
     expect(
       grid
         .slice(0, 5)
-        .every((cell) => cell.status === Status.BUSY && cell.ship === ship)
-    );
+        .every((row) => row[0].status === Status.BUSY && row[0].ship === ship)
+    ).toBe(true);
+  });
+});
+
+describe('gameboard rotateShip', () => {
+  test('should rotate a ship', () => {
+    const ship = Ship({
+      name: 'Aircraft Carrier',
+      length: 5,
+    });
+    gameboard.placeShip({ x: 0, y: 0 }, Orientation.HORIZONTAL, ship);
+    gameboard.rotateShip({ x: 0, y: 0 });
+    const grid = gameboard.getGrid(true);
+    expect(
+      grid[0].slice(1, 5).every((cell) => cell.status === Status.EMPTY)
+    ).toBe(true);
+    expect(
+      grid
+        .slice(0, 5)
+        .every((row) => row[0].status === Status.BUSY && row[0].ship === ship)
+    ).toBe(true);
+  });
+
+  test('should not rotate a ship if there is not enough space', () => {
+    const ship = Ship({
+      name: 'Aircraft Carrier',
+      length: 5,
+    });
+    gameboard.placeShip({ x: 9, y: 0 }, Orientation.VERTICAL, ship);
+    gameboard.rotateShip({ x: 9, y: 0 });
+    const grid = gameboard.getGrid(true);
+    expect(
+      grid
+        .slice(0, 5)
+        .every((row) => row[9].status === Status.BUSY && row[9].ship === ship)
+    ).toBe(true);
+
+    expect(
+      grid[0].slice(5, 9).every((cell) => cell.status === Status.EMPTY)
+    ).toBe(true);
   });
 });
 
@@ -237,7 +338,7 @@ describe('gameboard receiveAttack', () => {
     );
     const attack = gameboard.receiveAttack({ x: 0, y: 0 });
     expect(attack).toEqual({
-      shipName: ship.name,
+      ship,
       status: Status.SUNK,
       shipCoords: [{ x: 0, y: 0 }],
       adjacentCoords: [
@@ -259,7 +360,7 @@ describe('gameboard receiveAttack', () => {
     );
     const attack = gameboard.receiveAttack({ x: 0, y: 0 });
     expect(attack.status).toBe(Status.SUNK);
-    const grid = gameboard.getGrid();
+    const grid = gameboard.getGrid(true);
     expect(grid[0][1].status).toBe(Status.MISS);
     expect(grid[1][0].status).toBe(Status.MISS);
     expect(grid[1][1].status).toBe(Status.MISS);

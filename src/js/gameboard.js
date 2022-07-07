@@ -21,23 +21,26 @@ export const Status = Object.freeze({
 });
 
 export default function Gameboard() {
-  const ships = new Set();
+  let grid = buildGrid();
+  const fleet = new Set();
 
   function buildGrid() {
-    const grid = [];
+    const newGrid = [];
     for (let row = 0; row < GRID_SIZE; row += 1) {
-      grid.push([]);
+      newGrid.push([]);
       for (let column = 0; column < GRID_SIZE; column += 1) {
-        grid[row][column] = { status: Status.EMPTY };
+        newGrid[row][column] = { status: Status.EMPTY };
       }
     }
-    return grid;
+    return newGrid;
   }
 
-  const grid = buildGrid();
-
-  function getGrid() {
-    return grid.map((rows) => rows.slice(0));
+  function getGrid(multidimensional = false) {
+    const gridCopy = grid.map((rows) => rows.slice(0));
+    if (multidimensional) {
+      return gridCopy;
+    }
+    return gridCopy.flat();
   }
 
   function getCellData({ x, y }) {
@@ -45,6 +48,10 @@ export default function Gameboard() {
       return null;
     }
     return grid[y][x];
+  }
+
+  function getFleet() {
+    return Array.from(fleet);
   }
 
   function calculateEndCoordinates({ x, y }, orientation, shipLength) {
@@ -75,18 +82,18 @@ export default function Gameboard() {
     return coordinates;
   }
 
-  function isSpaceFree({ x, y, x2, y2 }, ship = null) {
+  function isSpaceFree({ x, y, x2, y2 }, shipId = null) {
     const coordinates = getShipSpace({ x, y, x2, y2 });
     return coordinates.every((coordinate) => {
       const cell = grid[coordinate.y][coordinate.x];
       return (
         cell.status === Status.EMPTY ||
-        (ship && cell.status === Status.BUSY && cell.ship === ship)
+        (shipId && cell.status === Status.BUSY && cell.ship.id === shipId)
       );
     });
   }
 
-  function canPlaceShip({ x, y }, orientation, shipLength, ship = null) {
+  function canPlaceShip({ x, y }, orientation, shipLength, shipId = null) {
     if (!areValidCoordinates({ x, y }, GRID_SIZE)) {
       return false;
     }
@@ -97,7 +104,7 @@ export default function Gameboard() {
     );
     if (
       !areValidCoordinates({ x: x2, y: y2 }, GRID_SIZE) ||
-      !isSpaceFree({ x, y, x2, y2 }, ship)
+      !isSpaceFree({ x, y, x2, y2 }, shipId)
     ) {
       return false;
     }
@@ -131,19 +138,19 @@ export default function Gameboard() {
         position += 1;
       }
     }
-    ships.add(ship);
+    fleet.add(ship);
     return ship;
   }
 
-  function placeShipsRandom(shipsData) {
-    shipsData.forEach((shipData) => {
-      for (let i = 0; i < shipData.count; i += 1) {
-        for (;;) {
-          const coodrindates = getRandomCoordinates(GRID_SIZE);
-          const orientation = Object.values(Orientation)[getRandomInt(2)];
-          if (placeShip(coodrindates, orientation, shipsData)) {
-            break;
-          }
+  function placeShipsRandom(newFleet) {
+    grid = buildGrid();
+    fleet.clear();
+    newFleet.forEach((ship) => {
+      for (;;) {
+        const coordinates = getRandomCoordinates(GRID_SIZE);
+        const orientation = Object.values(Orientation)[getRandomInt(2)];
+        if (placeShip(coordinates, orientation, ship)) {
+          break;
         }
       }
     });
@@ -159,7 +166,7 @@ export default function Gameboard() {
         { x: i, y: j },
         orientation ?? cellData.orientation,
         cellData.ship.length,
-        cellData.ship
+        cellData.ship.id
       )
     ) {
       return null;
@@ -173,6 +180,15 @@ export default function Gameboard() {
       orientation ?? cellData.orientation,
       cellData.ship
     );
+  }
+
+  function rotateShip({ x, y }) {
+    const cellData = getCellData({ x, y });
+    const orientation =
+      cellData.orientation === Orientation.HORIZONTAL
+        ? Orientation.VERTICAL
+        : Orientation.HORIZONTAL;
+    return moveShip({ x, y }, { i: x, j: y }, orientation);
   }
 
   function receiveAttack({ x, y }) {
@@ -189,7 +205,7 @@ export default function Gameboard() {
     if (cell.status === Status.BUSY) {
       const { ship } = cell;
       ship.hit(cell.position);
-      if (cell.ship.isSunk()) {
+      if (ship.isSunk()) {
         const coordinates = getShipSpace(cell);
         const shipCoords = coordinates.filter((coord) => {
           const shipCell = grid[coord.y][coord.x];
@@ -211,12 +227,13 @@ export default function Gameboard() {
           return false;
         });
         return {
-          shipName: ship.name,
+          ship,
           status: Status.SUNK,
           shipCoords,
           adjacentCoords,
         };
       }
+      cell.status = Status.HIT;
       return { status: Status.HIT };
     }
 
@@ -225,7 +242,7 @@ export default function Gameboard() {
 
   function isFleetSunk() {
     // eslint-disable-next-line no-restricted-syntax
-    for (const ship of ships) {
+    for (const ship of fleet) {
       if (!ship.isSunk()) {
         return false;
       }
@@ -236,10 +253,12 @@ export default function Gameboard() {
   return {
     getGrid,
     getCellData,
+    getFleet,
     canPlaceShip,
     placeShip,
     placeShipsRandom,
     moveShip,
+    rotateShip,
     receiveAttack,
     isFleetSunk,
   };
