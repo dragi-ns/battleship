@@ -1,4 +1,3 @@
-/* eslint-disable no-prototype-builtins */
 import Gameboard, { Status, GRID_SIZE, Orientation } from './gameboard';
 import Ship from './ship';
 
