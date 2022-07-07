@@ -31,42 +31,137 @@ button {
   text-transform: inherit;
 }
 
-button {
-  padding: 0.5rem;
-  cursor: pointer;
-  border: 2px solid black;
-  background-color: transparent;
-  transition: all 250ms ease-in-out;
-}
-
-button:hover,
-button:focus-visible {
-  background-color: black;
-  color: white;
-}
-
 img {
   max-width: 100%;
   display: block;
 }
 
+.drag-ghost-image {
+  width: min-content;
+  position: absolute;
+  top: -100%;
+}
+
+[draggable='true'] {
+  cursor: move;
+}
+
 :root {
+  --light-color: #ecf0f1;
+  --dark-color: #2c3e50;
+
+  --gameboard-cell-size: 30px;
+  --gameboard-cell-gap: 0.25rem;
+
   height: -webkit-fill-available;
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Roboto Condensed', sans-serif;
   display: flex;
   flex-direction: column;
   height: 100vh;
   height: -webkit-fill-available;
   overflow-x: hidden;
+  background-color: var(--light-color);
+  color: var(--dark-color);
 }
 
+/**************************
+ * Utils                  *
+ **************************/
+
 .container {
-  width: 85%;
+  width: 100%;
   height: 100%;
   margin: 0 auto;
+}
+
+@media screen and (min-width: 769px) {
+  .container {
+    max-width: 720px;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .container {
+    max-width: 960px;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .container {
+    max-width: 960px;
+  }
+}
+
+@media screen and (min-width: 1216px) {
+  .container {
+    max-width: 1152px;
+  }
+}
+
+@media screen and (min-width: 1408px) {
+  .container {
+    max-width: 1344px;
+  }
+}
+
+.btn {
+  border: 2px solid var(--dark-color);
+  background-color: transparent;
+  padding: 0.5rem 1rem;
+  text-transform: uppercase;
+  text-align: center;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 250ms ease-in-out, color 250ms ease-in-out;
+}
+
+.btn:focus-visible,
+.btn:hover,
+.radios input[type='radio']:focus-visible + .btn,
+.radios input[type='radio']:checked + .btn {
+  background-color: var(--dark-color);
+  color: var(--light-color);
+}
+
+.note {
+  text-transform: uppercase;
+}
+
+.note::before {
+  content: 'Note: ';
+  font-weight: bold;
+}
+
+.hide {
+  display: none !important;
+}
+
+.notifications {
+  position: fixed;
+  right: 0;
+  max-width: 350px;
+  max-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0.5rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notification {
+  padding: 0.5rem;
+  background-color: var(--light-color);
+  box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+}
+
+.notification.error {
+  background-color: #c0392b;
+  color: var(--light-color);
 }
 
 /**************************
@@ -78,18 +173,395 @@ body {
 }
 
 .logo {
-  --char-gap: clamp(10px, 1vw, 30px);
-  --cell-gap: clamp(2px, 0.1vw, 6px);
-  --cell-size: clamp(5px, 0.7vw, 15px);
+  --cell-background: var(--dark-color);
+  --char-gap: clamp(10px, 1.5vmin, 30px);
+  --cell-gap: clamp(2px, 0.3vmin, 6px);
+  --cell-size: clamp(5px, 1vmin, 15px);
 }
 
 .logo .cell.marked {
-  border: 2px solid black;
+  box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
 }
 
+/**************************
+ * Main                   *
+ **************************/
+
 main {
-  margin: 1rem 0;
+  margin: 1rem;
   flex: 1;
+}
+
+/**************************
+ * Game settings form     *
+ **************************/
+
+.form-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.game-settings-form {
+  max-width: 640px;
+  padding: 1.5rem;
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.form-field:last-child {
+  align-self: flex-end;
+}
+
+.form-field .radios {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.form-field .radios input[type='radio'] {
+  appearance: none;
+  position: absolute;
+}
+
+.form-field .radios input[type='radio'] + label {
+  flex: 1;
+}
+
+.form-field label {
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.form-field input[type='text'] {
+  padding: 0.5rem;
+  border: 2px solid var(--dark-color);
+}
+
+/**************************
+ * Gameboard              *
+ **************************/
+
+.gameboard-container .gameboard {
+  display: grid;
+  grid-template-columns: repeat(10, var(--gameboard-cell-size));
+  grid-template-rows: repeat(10, var(--gameboard-cell-size));
+  border: 1px solid var(--dark-color);
+}
+
+@media screen and (min-width: 1024px) {
+  :root {
+    --gameboard-cell-size: 40px;
+  }
+}
+
+.gameboard-container .gameboard .cell {
+  border: 1px solid var(--dark-color);
+  transition: all 250ms ease-in-out;
+}
+
+.gameboard-container .gameboard .cell.marked {
+  background-color: var(--dark-color);
+}
+
+.gameboard-container .gameboard .cell.valid {
+  background-color: #27ae60;
+}
+
+/**************************
+ * Fleet                  *
+ **************************/
+
+.fleet {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.fleet .ship-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.fleet .ship {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--gameboard-cell-size);
+  grid-auto-rows: var(--gameboard-cell-size);
+  justify-content: start;
+}
+
+.fleet .ship .cell {
+  background-color: var(--dark-color);
+}
+
+/**************************
+ * Setup phase            *
+ **************************/
+
+.setup-phase-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.setup-phase-container .player-name {
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.setup-phase-container .gameboard-container {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+@media screen and (min-width: 500px) {
+  .setup-phase-container .gameboard-container {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+@media screen and (min-width: 500px) {
+  .fleet-setup .ship-container {
+    align-items: flex-end;
+  }
+}
+
+.fleet-setup .ship[draggable='false'] {
+  outline: 1px solid var(--dark-color);
+}
+
+.fleet-setup .ship[draggable='false'] .cell {
+  background-color: transparent;
+}
+
+@media screen and (min-width: 500px) {
+  .fleet-setup .ship-name {
+    text-align: right;
+  }
+
+  .fleet-setup {
+    align-items: flex-end;
+  }
+
+  .fleet-setup .ship {
+    justify-content: end;
+  }
+}
+
+.setup-phase-container .buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/**************************
+ * Attack phase           *
+ **************************/
+
+.attack-phase-container,
+.attack-phase-container > div:first-child {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+@media screen and (min-width: 850px) {
+  .attack-phase-container {
+    justify-content: center;
+  }
+
+  .attack-phase-container > div:first-child {
+    flex-direction: row;
+  }
+}
+
+.attack-phase-container .player-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.attack-phase-container .player-info {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+}
+
+.attack-phase-container .player-info .player-name {
+  font-size: 1.2rem;
+  text-transform: uppercase;
+}
+
+@media screen and (min-width: 850px) {
+  .attack-phase-container .player-info .player-name {
+    font-size: 1.4rem;
+  }
+}
+
+.attack-phase-container .gameboard-container {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 1rem;
+}
+
+.attack-phase-container .player-container:last-child .gameboard-container {
+  flex-direction: column-reverse;
+}
+
+.attack-phase-container .player-container.active .gameboard {
+  pointer-events: none;
+}
+
+.attack-phase-container
+  .player-container:not(.active)
+  .gameboard
+  .cell:not(.miss, .hit, .sunk):hover {
+  background-color: #bdc3c7;
+  cursor: crosshair;
+}
+
+.attack-phase-container .gameboard .cell.miss {
+  background-color: #f1c40f;
+}
+
+.attack-phase-container .gameboard .cell.hit {
+  background-color: #d35400;
+}
+
+.attack-phase-container .gameboard .cell.sunk {
+  background-color: #c0392b;
+}
+
+@media screen and (min-width: 500px) {
+  .attack-phase-container .gameboard-container {
+    flex-direction: row-reverse;
+  }
+
+  .attack-phase-container .player-container:last-child .gameboard-container {
+    flex-direction: row-reverse;
+  }
+}
+
+@media screen and (min-width: 850px) {
+  .attack-phase-container .player-container:last-child .gameboard-container {
+    flex-direction: row;
+  }
+}
+
+.fleet-status .ship {
+  --gameboard-cell-size: 10px;
+  gap: 0.15rem;
+}
+
+.fleet-status .ship.sunk .cell {
+  background-color: #c0392b;
+}
+
+.fleet-status .ship-name {
+  font-size: 0.8rem;
+}
+
+@media screen and (min-width: 850px) {
+  .attack-phase-container .player-container:last-child .fleet-status {
+    align-items: flex-end;
+  }
+
+  .attack-phase-container
+    .player-container:last-child
+    .fleet-status
+    .ship-container {
+    align-items: flex-end;
+  }
+
+  .attack-phase-container
+    .player-container:last-child
+    .fleet-status
+    .ship-name {
+    text-align: right;
+  }
+}
+
+.attack-phase-container .turn-indicator {
+  font-size: 2rem;
+  transform: rotate(90deg);
+  transition: transform 250ms ease-in-out;
+}
+
+.attack-phase-container .turn-indicator.left {
+  transform: rotate(-90deg);
+}
+
+@media screen and (min-width: 850px) {
+  .attack-phase-container .turn-indicator {
+    transform: rotate(0deg);
+  }
+
+  .attack-phase-container .turn-indicator.left {
+    transform: rotate(180deg);
+  }
+}
+
+/**************************
+ * Pass device overla     *
+ **************************/
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  z-index: 2000;
+
+  background-color: var(--dark-color);
+  color: var(--light-color);
+}
+
+.overlay p {
+  font-size: 3rem;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.overlay .buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.overlay .buttons .btn {
+  color: var(--light-color);
+  border-color: var(--light-color);
+  background-color: transparent;
+}
+
+.overlay .buttons .btn:hover {
+  color: var(--dark-color);
+  background-color: var(--light-color);
 }
 
 /**************************

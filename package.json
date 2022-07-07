@@ -46,6 +46,8 @@
     "webpack-dev-server": "^4.9.0"
   },
   "dependencies": {
+    "atebit": "^1.0.0",
+    "pubsub-js": "^1.9.4",
     "uuid": "^8.3.2"
   }
 }
