@@ -2,16 +2,49 @@ import { areValidCoordinates, getRandomInt } from './util';
 import { Status } from './gameboard';
 
 export default function Player({ name }) {
+  let score = 0;
+  let active = false;
+
+  function getScore() {
+    return score;
+  }
+
+  function setScore(newScore) {
+    score = newScore;
+  }
+
+  function incrementScore() {
+    score += 1;
+  }
+
+  function isActive() {
+    return active;
+  }
+
+  function setActive(newState) {
+    active = newState;
+  }
+
+  function toggleActive() {
+    active = !active;
+  }
+
   return {
     isBot: false,
     name,
+    getScore,
+    setScore,
+    incrementScore,
+    isActive,
+    setActive,
+    toggleActive,
   };
 }
 
 export function isBot(player) {
-  const playedMoves = [];
   let hitCount = 0;
   let initialHitMove = null;
+  let playedMoves = [];
   let possibleMoves = [];
 
   function noMoreVariations(gridSize) {
@@ -154,10 +187,18 @@ export function isBot(player) {
     }
   }
 
+  function clearHistory() {
+    playedMoves = [];
+    hitCount = 0;
+    initialHitMove = null;
+    possibleMoves = null;
+  }
+
   return {
     ...player,
     isBot: true,
     getMove,
     lastMoveFeedback,
+    clearHistory,
   };
 }
