@@ -1,51 +1,50 @@
-/* eslint-disable no-prototype-builtins */
 import Ship from './ship';
 
-test('ship object should have a name property', () => {
-  expect(Ship({}).hasOwnProperty('name')).toBe(true);
-});
+describe('ship public api', () => {
+  let ship = null;
+  beforeEach(() => {
+    ship = Ship({ name: 'Ship 4', length: 4 });
+  });
 
-test('ship object should have the correct name property value', () => {
-  expect(Ship({ name: 'Battleship' }).name).toBe('Battleship');
-});
+  test('ship object public api', () => {
+    expect(Object.keys(ship)).toEqual([
+      'id',
+      'name',
+      'length',
+      'getPositions',
+      'hit',
+      'isSunk',
+    ]);
+  });
 
-test('ship object should have a length property', () => {
-  expect(Ship({}).hasOwnProperty('length')).toBe(true);
-});
+  test('should have a correct name value', () => {
+    expect(ship.name).toBe('Ship 4');
+  });
 
-test('ship object should have the correct length property value', () => {
-  expect(Ship({ length: 5 }).length).toBe(5);
-});
+  test('should have a correct length value', () => {
+    expect(ship.length).toBe(4);
+  });
 
-test('ship object should have a getPositions method', () => {
-  expect(Ship({}).hasOwnProperty('getPositions')).toBe(true);
-});
+  test('should generate positions array based on the length value', () => {
+    expect(ship.getPositions().length).toBe(4);
+  });
 
-test('ship object should generate positions based on a ship length', () => {
-  expect(Ship({ length: 3 }).getPositions().length).toBe(3);
-});
+  test('hit should mark a position as "hit"', () => {
+    ship.hit(2);
+    expect(ship.getPositions()[2]).toBe(true);
+  });
 
-test('ship object should have a hit method', () => {
-  expect(Ship({}).hasOwnProperty('hit')).toBe(true);
-});
+  test('sunk should return false if not all positions are hit', () => {
+    ship.hit(2);
+    ship.hit(0);
+    expect(ship.isSunk()).toBe(false);
+  });
 
-test('ship hit method should mark position as "hit"', () => {
-  const ship = Ship({ length: 4 });
-  ship.hit(2);
-  expect(ship.getPositions()[2]).toBe(true);
-});
-
-test('ship object should have an isSunk method', () => {
-  expect(Ship({}).hasOwnProperty('isSunk')).toBe(true);
-});
-
-test('ship isSunk method should report false if not all positions are hit', () => {
-  expect(Ship({ length: 2 }).isSunk()).toBe(false);
-});
-
-test('ship isSunk method should report true if all positions are hit', () => {
-  const ship = Ship({ length: 2 });
-  ship.hit(0);
-  ship.hit(1);
-  expect(ship.isSunk()).toBe(true);
+  test('sunk should return true if all positions are hit', () => {
+    ship.hit(0);
+    ship.hit(1);
+    ship.hit(2);
+    ship.hit(3);
+    expect(ship.isSunk()).toBe(true);
+  });
 });

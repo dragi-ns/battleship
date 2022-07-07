@@ -1,4 +1,7 @@
+import { v4 as uuidv4 } from 'uuid';
+
 export default function Ship({ name, length }) {
+  const id = uuidv4();
   const positions = Array(length).fill(false);
 
   function getPositions() {
@@ -14,6 +17,7 @@ export default function Ship({ name, length }) {
   }
 
   return {
+    id,
     name,
     length,
     getPositions,
