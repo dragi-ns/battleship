@@ -191,7 +191,7 @@ export function isBot(player) {
     playedMoves = [];
     hitCount = 0;
     initialHitMove = null;
-    possibleMoves = null;
+    possibleMoves = [];
   }
 
   return {
