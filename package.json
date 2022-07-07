@@ -46,6 +46,6 @@
     "webpack-dev-server": "^4.9.0"
   },
   "dependencies": {
-    "atebit": "^1.0.0"
+    "uuid": "^8.3.2"
   }
 }
