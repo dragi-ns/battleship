@@ -1,5 +1,8 @@
 import PubSub from 'pubsub-js';
 import { animate as atebitAnimate } from 'atebit';
+import { GRID_SIZE, Orientation, Status } from './gameboard';
+import { cellNumberToCoordinates, coordinatesToCellNumber } from './util';
+import { GameMode } from './gameData';
 import {
   DEFAULT_TIMING,
   POP_IN,
@@ -9,8 +12,6 @@ import {
   ZOOM_IN,
   ZOOM_OUT,
 } from './animations';
-import { GRID_SIZE, Orientation, Status } from './gameboard';
-import { GameMode } from './gameData';
 import {
   START_GAME,
   DISPLAY_SETUP_PHASE,
@@ -18,25 +19,25 @@ import {
   COORDINATES_FREE,
   PLACE_SHIP,
   PLACEMENT_VALID,
-  SETUP_PHASE_INCOMPLETE,
   PLACE_SHIPS_RANDOM,
   SETUP_PHASE_NEXT,
+  SETUP_PHASE_INCOMPLETE,
   DISPLAY_ATTACK_PHASE,
-  RESET_GAME,
   ATTACK,
+  MISS,
   HIT,
   SUNK,
-  MISS,
   FLEET_GONE,
   NEW_ROUND,
+  RESET_GAME,
 } from './eventTypes';
-import { cellNumberToCoordinates, coordinatesToCellNumber } from './util';
 
 export default function GameUi() {
   // Chrome doesn't allow accessing the dataTransfer object out of the dragstart
   // and drop handlers.
   let dataTransfer = null;
-  let setupCellGhostImage = null;
+  let cellGhostImage = null;
+  let passScreenTimeoutId = null;
 
   let turnIndicator = null;
   let playerOneGameboardContainer = null;
@@ -62,12 +63,12 @@ export default function GameUi() {
       unmarkFleetLocation(currentActiveGameboardContainer);
       markFleetLocation(currentActiveGameboardContainer, data.gameboard);
 
-      currentActiveGameboardContainer.querySelector('.fleet-setup').replaceWith(
-        createFleet(data.fleet, {
-          class: 'fleet fleet-setup',
-          draggable: false,
-        })
-      );
+      currentActiveGameboardContainer
+        .querySelectorAll('.fleet-setup .ship[draggable="true"]')
+        .forEach((ship) => {
+          ship.setAttribute('draggable', false);
+          ship.removeEventListener('dragstart', handleSetupShipDragStart);
+        });
     } else {
       render(main.firstElementChild, createSetupPhase(data), true, {
         outKeyframes: SLIDE_OUT_LEFT,
@@ -88,9 +89,8 @@ export default function GameUi() {
       `.fleet [data-ship-id="${data.shipId}"]`
     );
     if (shipContainer.draggable) {
-      shipContainer.draggable = false;
-      // cloneNode returns a node element without events
-      shipContainer.replaceWith(shipContainer.cloneNode(true));
+      shipContainer.setAttribute('draggable', false);
+      shipContainer.removeEventListener('click', handleSetupShipDragStart);
     }
   });
 
@@ -101,24 +101,24 @@ export default function GameUi() {
     });
   });
 
-  PubSub.subscribe(DISPLAY_ATTACK_PHASE, (_, data) => {
-    if (data.mode === GameMode.VS_FRIEND) {
+  PubSub.subscribe(DISPLAY_ATTACK_PHASE, async (_, data) => {
+    if (data.gameMode === GameMode.VS_FRIEND) {
       let attackerName = null;
       if (data.playerOne.active) {
         attackerName = data.playerOne.name;
       } else {
         attackerName = data.playerTwo.name;
       }
-      render(document.body, createPassDeviceScreen(attackerName), false, {
-        inKeyFrames: ZOOM_IN,
+      renderOverlay(createPassDeviceScreen(attackerName));
+      render(main.firstElementChild, createAttackPhase(data), true);
+      currentActiveGameboardContainer.scrollIntoView();
+    } else {
+      await render(main.firstElementChild, createAttackPhase(data), true, {
+        outKeyframes: SLIDE_OUT_LEFT,
+        inKeyFrames: SLIDE_IN_RIGHT,
       });
+      currentActiveGameboardContainer.scrollIntoView({ behavior: 'smooth' });
     }
-    render(main.firstElementChild, createAttackPhase(data), true, {
-      outKeyframes: SLIDE_OUT_LEFT,
-      inKeyFrames: SLIDE_IN_RIGHT,
-    });
-
-    currentActiveGameboardContainer.scrollIntoView({ behavior: 'smooth' });
   });
 
   PubSub.subscribe(MISS, (_, data) => {
@@ -127,85 +127,7 @@ export default function GameUi() {
       .querySelector(`[data-cell-num="${cellNum}"]`)
       .classList.add('miss');
 
-    if (data.mode === GameMode.VS_BOT) {
-      if (data.playerOne.active) {
-        playerTwoGameboardContainer.classList.remove('active');
-        playerTwoGameboardContainer
-          .querySelector('.gameboard')
-          .addEventListener('click', handleAttackGameboardClick);
-        turnIndicator.classList.remove('left');
-        currentActiveGameboardContainer = playerTwoGameboardContainer;
-      } else {
-        playerTwoGameboardContainer.classList.add('active');
-        playerTwoGameboardContainer
-          .querySelector('.gameboard')
-          .removeEventListener('click', handleAttackGameboardClick);
-        turnIndicator.classList.add('left');
-        currentActiveGameboardContainer = playerOneGameboardContainer;
-      }
-
-      currentActiveGameboardContainer.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      setTimeout(() => {
-        let attackerName = null;
-        if (data.playerOne.active) {
-          attackerName = data.playerOne.name;
-        } else {
-          attackerName = data.playerTwo.name;
-        }
-        render(document.body, createPassDeviceScreen(attackerName), false, {
-          inKeyFrames: ZOOM_IN,
-        });
-      }, 1000);
-
-      // eslint-disable-next-line no-lonely-if
-      if (data.playerOne.active) {
-        setTimeout(() => {
-          unmarkFleetLocation(playerTwoGameboardContainer);
-          markFleetLocation(
-            playerOneGameboardContainer,
-            data.playerOne.gameboardData
-          );
-          playerTwoGameboardContainer.classList.remove('active');
-          playerTwoGameboardContainer
-            .querySelector('.gameboard')
-            .addEventListener('click', handleAttackGameboardClick);
-          turnIndicator.classList.remove('left');
-          currentActiveGameboardContainer = playerTwoGameboardContainer;
-          currentActiveGameboardContainer.scrollIntoView({
-            behavior: 'smooth',
-          });
-        }, 1250);
-
-        playerOneGameboardContainer.classList.add('active');
-        playerOneGameboardContainer
-          .querySelector('.gameboard')
-          .removeEventListener('click', handleAttackGameboardClick);
-      } else {
-        setTimeout(() => {
-          unmarkFleetLocation(playerOneGameboardContainer);
-          markFleetLocation(
-            playerTwoGameboardContainer,
-            data.playerTwo.gameboardData
-          );
-          playerOneGameboardContainer.classList.remove('active');
-          playerOneGameboardContainer
-            .querySelector('.gameboard')
-            .addEventListener('click', handleAttackGameboardClick);
-          turnIndicator.classList.add('left');
-          currentActiveGameboardContainer = playerOneGameboardContainer;
-
-          currentActiveGameboardContainer.scrollIntoView({
-            behavior: 'smooth',
-          });
-        }, 1250);
-
-        playerTwoGameboardContainer.classList.add('active');
-        playerTwoGameboardContainer
-          .querySelector('.gameboard')
-          .removeEventListener('click', handleAttackGameboardClick);
-      }
-    }
+    swapRoles(data);
   });
 
   PubSub.subscribe(HIT, (_, data) => {
@@ -223,6 +145,7 @@ export default function GameUi() {
       );
       cell.classList.remove('hit');
       cell.classList.add('sunk');
+      cell.animate(POP_IN, DEFAULT_TIMING);
     });
 
     data.adjacentCoords.forEach((coord) => {
@@ -236,13 +159,18 @@ export default function GameUi() {
     currentActiveGameboardContainer
       .querySelector(`.fleet-status [data-ship-id="${data.shipId}"]`)
       .classList.add('sunk');
+
+    renderNotification({
+      type: 'info',
+      msg: `${data.attackerName} sunk ${data.opponentName}'s ${data.shipName}!`,
+    });
   });
 
   PubSub.subscribe(FLEET_GONE, (_, data) => {
     setTimeout(() => {
       render(
         document.body,
-        createEndRoundOverlay(data.winner, data.loser),
+        createEndRoundOverlay(data.winnerName, data.loserName),
         false,
         {
           inKeyFrames: ZOOM_IN,
@@ -301,10 +229,10 @@ export default function GameUi() {
       parent.appendChild(element);
     }
     if (animations) {
-      element.animate(
+      await element.animate(
         animations.inKeyFrames,
         animations.inTiming ?? DEFAULT_TIMING
-      );
+      ).finished;
     }
   }
 
@@ -333,34 +261,10 @@ export default function GameUi() {
     }, duration);
   }
 
-  function createPassDeviceScreen(playerName) {
-    return createOverlay(`${playerName}'s turn!`, [
-      createButton('Leave game', { class: 'btn' }, [
-        createEvent('click', async (event) => {
-          const parent = event.currentTarget.closest('.overlay');
-          await parent.animate(ZOOM_OUT, DEFAULT_TIMING).finished;
-          parent.remove();
-          PubSub.publish(RESET_GAME);
-          render(main.firstElementChild, createGameSettingsForm(), true, {
-            inKeyFrames: ZOOM_IN,
-            outKeyframes: ZOOM_OUT,
-          });
-        }),
-      ]),
-      createButton('Accept', { class: 'btn' }, [
-        createEvent('click', async (event) => {
-          const parent = event.currentTarget.closest('.overlay');
-          await parent.animate(ZOOM_OUT, DEFAULT_TIMING).finished;
-          parent.remove();
-        }),
-      ]),
-    ]);
-  }
-
   function createOverlay(text, buttons) {
     return createElement({
       attributes: {
-        class: 'overlay',
+        id: 'overlay',
       },
       children: [
         createElement({
@@ -377,28 +281,64 @@ export default function GameUi() {
     });
   }
 
-  function createEndRoundOverlay(winner, loser) {
-    return createOverlay(`${winner} sunk ${loser}'s fleet!`, [
-      createButton('Leave game', { class: 'btn' }, [
+  async function renderOverlay(overlay) {
+    await render(document.body, overlay, false, {
+      inKeyFrames: ZOOM_IN,
+    });
+    document.body.classList.add('clipped');
+  }
+
+  function createPassDeviceScreen(playerName) {
+    return createOverlay(`${playerName}'s turn!`, [
+      createLeaveGameButton(),
+      createButton('Accept', { class: 'btn' }, [
         createEvent('click', async (event) => {
-          const parent = event.currentTarget.closest('.overlay');
-          await parent.animate(ZOOM_OUT, DEFAULT_TIMING).finished;
-          parent.remove();
-          PubSub.publish(RESET_GAME);
-          render(main.firstElementChild, createGameSettingsForm(), true, {
-            inKeyFrames: ZOOM_IN,
-            outKeyframes: ZOOM_OUT,
+          await removeOverlay(event);
+          currentActiveGameboardContainer.scrollIntoView({
+            behavior: 'smooth',
           });
         }),
       ]),
+    ]);
+  }
+
+  function createEndRoundOverlay(winner, loser) {
+    return createOverlay(`${winner} sunk ${loser}'s fleet!`, [
+      createLeaveGameButton(),
       createButton('Continue', { class: 'btn' }, [
-        createEvent('click', async (event) => {
-          const parent = event.currentTarget.closest('.overlay');
-          await parent.animate(ZOOM_OUT, DEFAULT_TIMING).finished;
-          parent.remove();
+        createEvent('click', (event) => {
+          removeOverlay(event);
           PubSub.publish(NEW_ROUND);
         }),
       ]),
+    ]);
+  }
+
+  async function removeOverlay(event) {
+    const parent = event.currentTarget.closest('#overlay');
+    if (parent) {
+      await parent.animate(ZOOM_OUT, DEFAULT_TIMING).finished;
+      parent.remove();
+      document.body.classList.remove('clipped');
+    }
+  }
+
+  function createLeaveGameButton() {
+    return createButton('Leave game', { class: 'btn' }, [
+      createEvent('click', (event) => {
+        if (passScreenTimeoutId) {
+          clearTimeout(passScreenTimeoutId);
+        }
+
+        removeOverlay(event);
+
+        PubSub.publish(RESET_GAME);
+
+        render(main.firstElementChild, createGameSettingsForm(), true, {
+          inKeyFrames: ZOOM_IN,
+          outKeyframes: ZOOM_OUT,
+        });
+      }),
     ]);
   }
 
@@ -553,10 +493,13 @@ export default function GameUi() {
       },
       children: [
         createSetupGameboard(data.gameboard),
-        createFleet(data.fleet, {
-          class: 'fleet fleet-setup',
-          draggable: !data.random,
-        }),
+        createFleet(
+          data.fleet,
+          {
+            class: 'fleet fleet-setup',
+          },
+          !data.random
+        ),
       ],
     });
     return createElement({
@@ -578,6 +521,7 @@ export default function GameUi() {
             class: 'buttons',
           },
           children: [
+            createLeaveGameButton(),
             createButton('Random', { class: 'btn' }, [
               createEvent('click', () => {
                 PubSub.publish(PLACE_SHIPS_RANDOM);
@@ -628,17 +572,17 @@ export default function GameUi() {
     });
   }
 
-  function createSetupGameboard(gameboardData) {
+  function createSetupGameboard(gameboard) {
     return createElement({
       attributes: {
         class: 'gameboard',
       },
-      children: gameboardData.flat().map((cellData, cellNum) =>
+      children: gameboard.map((cell, cellNum) =>
         createGameboardCell(
-          cellData,
+          cell,
           {
             'data-cell-num': cellNum,
-            draggable: cellData.status === Status.BUSY,
+            draggable: cell.status === Status.BUSY,
           },
           [
             createEvent('click', handleSetupCellClick),
@@ -686,24 +630,35 @@ export default function GameUi() {
     });
   }
 
-  function createFleet(fleet, attributes) {
+  function createCellGhostImage(shipId, shipOrientation) {
+    const dragGhostImage = createElement({
+      attributes: {
+        class: 'fleet fleet-setup drag-ghost-image',
+      },
+    });
+    const shipElement = document
+      .querySelector(`.fleet [data-ship-id="${shipId}"]`)
+      .cloneNode(true);
+    shipElement.setAttribute('draggable', true);
+    if (shipOrientation === Orientation.VERTICAL) {
+      shipElement.style.gridAutoFlow = 'row';
+    }
+    dragGhostImage.appendChild(shipElement);
+    document.body.appendChild(dragGhostImage);
+    return dragGhostImage;
+  }
+
+  function createFleet(fleet, attributes, shipsDraggable = true) {
     return createElement({
       attributes,
-      children: fleet.map((ship) => createShip(ship, attributes.draggable)),
+      children: fleet.map((ship) => createShip(ship, shipsDraggable)),
     });
   }
 
   function createShip(ship, draggable = true) {
     const events = [];
     if (draggable) {
-      events.push(
-        createEvent('dragstart', () => {
-          dataTransfer = {
-            shipId: ship.id,
-            shipOrientation: Orientation.HORIZONTAL,
-          };
-        })
-      );
+      events.push(createEvent('dragstart', handleSetupShipDragStart));
     }
 
     return createElement({
@@ -737,9 +692,9 @@ export default function GameUi() {
             }
             return cells;
           })(),
+          events,
         }),
       ],
-      events,
     });
   }
 
@@ -792,18 +747,15 @@ export default function GameUi() {
     });
   }
 
-  function markFleetLocation(gameboardContainer, gameboardData) {
-    gameboardData
-      .flat()
-      .filter(
-        (cellData) => cellData.status === Status.BUSY && cellData.position === 0
-      )
-      .forEach((cellData) => {
+  function markFleetLocation(gameboardContainer, gameboard) {
+    gameboard
+      .filter((cell) => cell.status === Status.BUSY && cell.position === 0)
+      .forEach((cell) => {
         markShipLocationCells(gameboardContainer, {
-          startCoords: { x: cellData.x, y: cellData.y },
-          shipId: cellData.ship.id,
-          shipOrientation: cellData.orientation,
-          shipLength: cellData.ship.length,
+          startCoords: { x: cell.x, y: cell.y },
+          shipId: cell.ship.id,
+          shipOrientation: cell.orientation,
+          shipLength: cell.ship.length,
         });
       });
   }
@@ -816,11 +768,11 @@ export default function GameUi() {
 
   function createAttackPhase(data) {
     playerOneGameboardContainer = createPlayerContainer(
-      data.mode,
+      data.gameMode,
       data.playerOne
     );
     playerTwoGameboardContainer = createPlayerContainer(
-      data.mode,
+      data.gameMode,
       data.playerTwo
     );
     currentActiveGameboardContainer = data.playerOne.active
@@ -848,35 +800,18 @@ export default function GameUi() {
           attributes: {
             class: 'buttons',
           },
-          children: [
-            createButton('Leave game', { class: 'btn' }, [
-              createEvent('click', () => {
-                PubSub.publish(RESET_GAME);
-                render(main.firstElementChild, createGameSettingsForm(), true, {
-                  inKeyFrames: ZOOM_IN,
-                  outKeyframes: ZOOM_OUT,
-                });
-              }),
-            ]),
-          ],
+          children: [createLeaveGameButton()],
         }),
       ],
     });
   }
 
   function createPlayerContainer(gameMode, playerData) {
-    const shouldRenderShipLocation =
-      (gameMode === GameMode.VS_BOT && !playerData.isBot) ||
-      (gameMode === GameMode.VS_FRIEND && playerData.active);
-
-    const shouldBeActive =
-      (gameMode === GameMode.VS_BOT &&
-        (!playerData.isBot || (playerData.isBot && playerData.active))) ||
-      (gameMode === GameMode.VS_FRIEND && playerData.active);
-
     return createElement({
       attributes: {
-        class: `player-container${shouldBeActive ? ' active' : ''}`,
+        class: `player-container${
+          shouldPlayerContainerBeActive(gameMode, playerData) ? ' active' : ''
+        }`,
       },
       children: [
         createElement({
@@ -906,20 +841,23 @@ export default function GameUi() {
           },
           children: [
             createAttackGameboard(
-              playerData.gameboardData,
-              shouldRenderShipLocation
+              playerData.gameboard,
+              shouldRenderFleetLocation(gameMode, playerData)
             ),
-            createFleet(playerData.fleet, {
-              class: 'fleet fleet-status',
-              draggable: false,
-            }),
+            createFleet(
+              playerData.fleet,
+              {
+                class: 'fleet fleet-status',
+              },
+              false
+            ),
           ],
         }),
       ],
     });
   }
 
-  function createAttackGameboard(gameboardData, showShips) {
+  function createAttackGameboard(gameboard, showShips) {
     const events = [];
     if (!showShips) {
       events.push(createEvent('click', handleAttackGameboardClick));
@@ -928,9 +866,9 @@ export default function GameUi() {
       attributes: {
         class: 'gameboard',
       },
-      children: gameboardData.flat().map((cellData, cellNum) =>
+      children: gameboard.map((cell, cellNum) =>
         createGameboardCell(
-          cellData,
+          cell,
           {
             'data-cell-num': cellNum,
           },
@@ -940,6 +878,93 @@ export default function GameUi() {
       ),
       events,
     });
+  }
+
+  function shouldRenderFleetLocation(gameMode, playerData) {
+    return (
+      (gameMode === GameMode.VS_BOT && !playerData.isBot) ||
+      (gameMode === GameMode.VS_FRIEND && playerData.active)
+    );
+  }
+
+  function shouldPlayerContainerBeActive(gameMode, playerData) {
+    return (
+      (gameMode === GameMode.VS_BOT &&
+        (!playerData.isBot || (playerData.isBot && playerData.active))) ||
+      (gameMode === GameMode.VS_FRIEND && playerData.active)
+    );
+  }
+
+  function swapRoles(data) {
+    if (data.gameMode === GameMode.VS_BOT) {
+      if (data.playerOne.active) {
+        removeGameboardClickEvent(playerOneGameboardContainer);
+        addGameboardClickEvent(playerTwoGameboardContainer);
+        playerTwoGameboardContainer.classList.remove('active');
+        turnIndicator.classList.remove('left');
+        currentActiveGameboardContainer = playerTwoGameboardContainer;
+      } else {
+        removeGameboardClickEvent(playerTwoGameboardContainer);
+        playerTwoGameboardContainer.classList.add('active');
+        turnIndicator.classList.add('left');
+        currentActiveGameboardContainer = playerOneGameboardContainer;
+      }
+      setTimeout(() => {
+        currentActiveGameboardContainer.scrollIntoView({
+          behavior: 'smooth',
+        });
+      }, 500);
+      return;
+    }
+
+    let attacker = null;
+    let attackerGameboardContainer = null;
+    let opponentGameboardContainer = null;
+
+    if (data.playerOne.active) {
+      attacker = data.playerOne;
+      attackerGameboardContainer = playerOneGameboardContainer;
+      opponentGameboardContainer = playerTwoGameboardContainer;
+    } else {
+      attacker = data.playerTwo;
+      attackerGameboardContainer = playerTwoGameboardContainer;
+      opponentGameboardContainer = playerOneGameboardContainer;
+    }
+
+    passScreenTimeoutId = setTimeout(() => {
+      renderOverlay(createPassDeviceScreen(attacker.name));
+    }, 1000);
+
+    setTimeout(() => {
+      unmarkFleetLocation(opponentGameboardContainer);
+      markFleetLocation(attackerGameboardContainer, attacker.gameboard);
+
+      addGameboardClickEvent(opponentGameboardContainer);
+
+      if (attacker === data.playerOne) {
+        turnIndicator.classList.remove('left');
+      } else {
+        turnIndicator.classList.add('left');
+      }
+
+      currentActiveGameboardContainer = opponentGameboardContainer;
+    }, 1250);
+
+    removeGameboardClickEvent(attackerGameboardContainer);
+  }
+
+  function addGameboardClickEvent(gameboardContainer) {
+    gameboardContainer.classList.remove('active');
+    gameboardContainer
+      .querySelector('.gameboard')
+      .addEventListener('click', handleAttackGameboardClick);
+  }
+
+  function removeGameboardClickEvent(gameboardContainer) {
+    gameboardContainer.classList.add('active');
+    gameboardContainer
+      .querySelector('.gameboard')
+      .removeEventListener('click', handleAttackGameboardClick);
   }
 
   // DOM EVENT HANDLERS
@@ -963,6 +988,10 @@ export default function GameUi() {
       !form.elements['player-one'].validity.valid ||
       !form.elements['player-two'].validity.valid
     ) {
+      renderNotification({
+        type: 'error',
+        msg: 'Player names can have maximum of 16 characters!',
+      });
       return;
     }
 
@@ -986,17 +1015,33 @@ export default function GameUi() {
     }
 
     PubSub.publish(START_GAME, {
-      mode: gameMode,
+      gameMode,
       playerOneName,
       playerTwoName,
     });
+  }
+
+  function handleSetupShipDragStart(event) {
+    const target = event.currentTarget;
+    if (!target || !target.hasAttribute('data-ship-id')) {
+      return;
+    }
+
+    const shipId = target.getAttribute('data-ship-id');
+    const shipOrientation =
+      target.getAttribute('data-ship-orientation') ?? Orientation.HORIZONTAL;
+
+    dataTransfer = {
+      shipId,
+      shipOrientation,
+    };
   }
 
   function handleSetupGameboardDragEnter(event) {
     event.preventDefault();
 
     const { target } = event;
-    if (!dataTransfer || !target || !target.classList.contains('cell')) {
+    if (!dataTransfer || !target || !target.hasAttribute('data-cell-num')) {
       return;
     }
 
@@ -1018,7 +1063,7 @@ export default function GameUi() {
 
   function handleSetupGameboardDragLeave(event) {
     const { target } = event;
-    if (!target || !target.classList.contains('cell')) {
+    if (!target || !target.hasAttribute('data-cell-num')) {
       return;
     }
     unmarkValidTargetCells(currentActiveGameboardContainer);
@@ -1028,7 +1073,7 @@ export default function GameUi() {
     event.preventDefault();
 
     const { target } = event;
-    if (!dataTransfer || !target || !target.classList.contains('cell')) {
+    if (!dataTransfer || !target || !target.hasAttribute('data-cell-num')) {
       return;
     }
 
@@ -1050,11 +1095,7 @@ export default function GameUi() {
 
   function handleSetupCellClick(event) {
     const { target } = event;
-    if (
-      !target ||
-      !target.classList.contains('cell') ||
-      !target.hasAttribute('data-ship-id')
-    ) {
+    if (!target || !target.hasAttribute('data-ship-id')) {
       return;
     }
 
@@ -1085,41 +1126,22 @@ export default function GameUi() {
   function handleSetupCellDragStart(event) {
     const { target } = event;
 
-    if (
-      !target ||
-      !target.classList.contains('cell') ||
-      !target.hasAttribute('data-ship-id')
-    ) {
+    if (!target || !target.hasAttribute('data-ship-id')) {
       return;
     }
 
-    setupCellGhostImage = createElement({
-      attributes: {
-        class: 'fleet fleet-setup drag-ghost-image',
-      },
-    });
-    const shipElement = document
-      .querySelector(
-        `.fleet [data-ship-id="${target.getAttribute('data-ship-id')}"]`
-      )
-      .cloneNode(true);
-    setupCellGhostImage.appendChild(shipElement);
-    document.body.appendChild(setupCellGhostImage);
-    shipElement.setAttribute('draggable', true);
-    if (
-      parseInt(target.getAttribute('data-ship-orientation'), 10) ===
-      Orientation.VERTICAL
-    ) {
-      shipElement.style.gridAutoFlow = 'row';
-    }
-    event.dataTransfer.setDragImage(setupCellGhostImage, 0, 0);
+    const shipId = target.getAttribute('data-ship-id');
+    const shipOrientation = parseInt(
+      target.getAttribute('data-ship-orientation'),
+      10
+    );
+
+    cellGhostImage = createCellGhostImage(shipId, shipOrientation);
+    event.dataTransfer.setDragImage(cellGhostImage, 0, 0);
 
     dataTransfer = {
-      shipId: target.getAttribute('data-ship-id'),
-      shipOrientation: parseInt(
-        target.getAttribute('data-ship-orientation'),
-        10
-      ),
+      shipId,
+      shipOrientation,
       oldStartCoords: cellNumberToCoordinates(
         parseInt(target.getAttribute('data-cell-num'), 10),
         GRID_SIZE
@@ -1128,16 +1150,16 @@ export default function GameUi() {
   }
 
   function handleSetupCellDragEnd() {
-    if (setupCellGhostImage) {
-      setupCellGhostImage.remove();
-      setupCellGhostImage = null;
+    if (cellGhostImage) {
+      cellGhostImage.remove();
+      cellGhostImage = null;
     }
   }
 
   function handleAttackGameboardClick(event) {
     const { target } = event;
 
-    if (!target || !target.classList.contains('cell')) {
+    if (!target || target.className.search(/(miss|hit|sunk)/) !== -1) {
       return;
     }
 

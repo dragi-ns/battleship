@@ -1,6 +1,5 @@
 export const DEFAULT_TIMING = {
   duration: 250,
-  fill: 'forwards',
 };
 
 export const POP_IN = [

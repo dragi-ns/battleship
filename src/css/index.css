@@ -36,14 +36,14 @@ img {
   display: block;
 }
 
+[draggable='true'] {
+  cursor: move;
+}
+
 .drag-ghost-image {
   width: min-content;
   position: absolute;
   top: -100%;
-}
-
-[draggable='true'] {
-  cursor: move;
 }
 
 :root {
@@ -70,6 +70,10 @@ body {
 /**************************
  * Utils                  *
  **************************/
+
+.clipped {
+  overflow: hidden;
+}
 
 .container {
   width: 100%;
@@ -149,14 +153,21 @@ body {
   padding: 0.5rem;
   z-index: 1000;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   gap: 0.5rem;
 }
 
 .notification {
-  padding: 0.5rem;
+  font-size: 1.2rem;
+  padding: 1rem;
+  color: var(--dark-color);
   background-color: var(--light-color);
   box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+}
+
+.notification.info {
+  background-color: #2980b9;
+  color: var(--light-color);
 }
 
 .notification.error {
@@ -268,6 +279,7 @@ main {
 }
 
 .gameboard-container .gameboard .cell {
+  position: relative;
   border: 1px solid var(--dark-color);
   transition: all 250ms ease-in-out;
 }
@@ -328,7 +340,7 @@ main {
 .setup-phase-container .gameboard-container {
   display: flex;
   flex-direction: column-reverse;
-  align-items: flex-start;
+  align-items: center;
   gap: 1rem;
 }
 
@@ -339,10 +351,19 @@ main {
   }
 }
 
-@media screen and (min-width: 500px) {
-  .fleet-setup .ship-container {
-    align-items: flex-end;
-  }
+.fleet-setup {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.fleet-setup .ship-name {
+  text-align: center;
+}
+
+.fleet-setup .ship-container {
+  align-items: center;
 }
 
 .fleet-setup .ship[draggable='false'] {
@@ -354,6 +375,15 @@ main {
 }
 
 @media screen and (min-width: 500px) {
+  .fleet-setup {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .fleet-setup .ship-container {
+    align-items: flex-end;
+  }
+
   .fleet-setup .ship-name {
     text-align: right;
   }
@@ -395,75 +425,85 @@ main {
   }
 }
 
-.attack-phase-container .player-container {
+.player-container {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.attack-phase-container .player-info {
+.player-container .player-info {
   display: flex;
   justify-content: space-between;
   font-weight: bold;
 }
 
-.attack-phase-container .player-info .player-name {
+.player-container .player-info .player-name {
   font-size: 1.2rem;
   text-transform: uppercase;
 }
 
 @media screen and (min-width: 850px) {
-  .attack-phase-container .player-info .player-name {
+  .player-container .player-info .player-name {
     font-size: 1.4rem;
   }
 }
 
-.attack-phase-container .gameboard-container {
+.player-container .gameboard-container {
   display: flex;
   flex-direction: column-reverse;
   gap: 1rem;
 }
 
-.attack-phase-container .player-container:last-child .gameboard-container {
+.player-container:last-child .gameboard-container {
   flex-direction: column-reverse;
 }
 
-.attack-phase-container .player-container.active .gameboard {
+.player-container.active .gameboard {
   pointer-events: none;
 }
 
-.attack-phase-container
-  .player-container:not(.active)
-  .gameboard
-  .cell:not(.miss, .hit, .sunk):hover {
+.player-container:not(.active) .gameboard .cell:not(.miss, .hit, .sunk):hover {
   background-color: #bdc3c7;
   cursor: crosshair;
 }
 
-.attack-phase-container .gameboard .cell.miss {
-  background-color: #f1c40f;
+.player-container .gameboard .cell::before {
+  content: '';
+  position: absolute;
+  width: calc(var(--gameboard-cell-size) / 2);
+  height: calc(var(--gameboard-cell-size) / 2);
+  background-color: transparent;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 250ms ease-in-out;
 }
 
-.attack-phase-container .gameboard .cell.hit {
-  background-color: #d35400;
+.player-container .gameboard .cell.miss::before {
+  background-color: #3498db;
 }
 
-.attack-phase-container .gameboard .cell.sunk {
+.player-container .gameboard .cell.hit::before {
+  background-color: #e67e22;
+}
+
+.player-container .gameboard .cell.sunk {
   background-color: #c0392b;
 }
 
 @media screen and (min-width: 500px) {
-  .attack-phase-container .gameboard-container {
+  .player-container .gameboard-container {
     flex-direction: row-reverse;
   }
 
-  .attack-phase-container .player-container:last-child .gameboard-container {
+  .player-container:last-child .gameboard-container {
     flex-direction: row-reverse;
   }
 }
 
 @media screen and (min-width: 850px) {
-  .attack-phase-container .player-container:last-child .gameboard-container {
+  .player-container:last-child .gameboard-container {
     flex-direction: row;
   }
 }
@@ -482,21 +522,15 @@ main {
 }
 
 @media screen and (min-width: 850px) {
-  .attack-phase-container .player-container:last-child .fleet-status {
+  .player-container:last-child .fleet-status {
     align-items: flex-end;
   }
 
-  .attack-phase-container
-    .player-container:last-child
-    .fleet-status
-    .ship-container {
+  .player-container:last-child .fleet-status .ship-container {
     align-items: flex-end;
   }
 
-  .attack-phase-container
-    .player-container:last-child
-    .fleet-status
-    .ship-name {
+  .player-container:last-child .fleet-status .ship-name {
     text-align: right;
   }
 }
@@ -522,10 +556,12 @@ main {
 }
 
 /**************************
- * Pass device overla     *
+ * Pass device overlay    *
  **************************/
 
-.overlay {
+#overlay {
+  width: 100vw;
+  height: 100vh;
   position: fixed;
   top: 0;
   left: 0;
@@ -542,24 +578,25 @@ main {
   color: var(--light-color);
 }
 
-.overlay p {
+#overlay p {
   font-size: 3rem;
   text-transform: uppercase;
   font-weight: bold;
+  text-align: center;
 }
 
-.overlay .buttons {
+#overlay .buttons {
   display: flex;
   gap: 1rem;
 }
 
-.overlay .buttons .btn {
+#overlay .buttons .btn {
   color: var(--light-color);
   border-color: var(--light-color);
   background-color: transparent;
 }
 
-.overlay .buttons .btn:hover {
+#overlay .buttons .btn:hover {
   color: var(--dark-color);
   background-color: var(--light-color);
 }
