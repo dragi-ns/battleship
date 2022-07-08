@@ -376,11 +376,12 @@ main {
 
 @media screen and (min-width: 500px) {
   .fleet-setup {
-    flex-direction: column;
-    gap: 0.25rem;
+    /* flex-direction: column; */
+    gap: 0.5rem;
+    width: min-content;
   }
 
-  .fleet-setup .ship-container {
+  /* .fleet-setup .ship-container {
     align-items: flex-end;
   }
 
@@ -394,7 +395,7 @@ main {
 
   .fleet-setup .ship {
     justify-content: end;
-  }
+  } */
 }
 
 .setup-phase-container .buttons {
