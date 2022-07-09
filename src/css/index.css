@@ -399,7 +399,7 @@ main {
   gap: 1rem;
 }
 
-@media screen and (min-width: 850px) {
+@media screen and (min-width: 700px) {
   .attack-phase-container {
     justify-content: center;
   }
@@ -543,6 +543,7 @@ main {
 
 .attack-phase-container .turn-indicator {
   font-size: 2rem;
+  transform-origin: center;
   transform: rotate(90deg);
   transition: transform 250ms ease-in-out;
 }
@@ -551,7 +552,7 @@ main {
   transform: rotate(-90deg);
 }
 
-@media screen and (min-width: 850px) {
+@media screen and (min-width: 700px) {
   .attack-phase-container .turn-indicator {
     transform: rotate(0deg);
   }

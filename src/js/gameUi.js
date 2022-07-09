@@ -782,7 +782,7 @@ export default function GameUi() {
       attributes: {
         class: `turn-indicator${!data.playerOne.active ? ' left' : ''}`,
       },
-      content: '-->',
+      content: '->',
     });
     return createElement({
       attributes: {
