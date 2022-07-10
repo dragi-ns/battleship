@@ -278,6 +278,12 @@ main {
   }
 }
 
+@media screen and (min-width: 1920px) {
+  :root {
+    --gameboard-cell-size: 50px;
+  }
+}
+
 .gameboard-container .gameboard .cell {
   position: relative;
   border: 1px solid var(--dark-color);
@@ -406,6 +412,13 @@ main {
 
   .attack-phase-container > div:first-child {
     flex-direction: row;
+  }
+}
+
+@media screen and (min-width: 1920px) {
+  .attack-phase-container,
+  .attack-phase-container > div:first-child {
+    gap: 2rem;
   }
 }
 
@@ -541,6 +554,12 @@ main {
   }
 }
 
+@media screen and (min-width: 1920px) {
+  .fleet-status .ship {
+    --gameboard-cell-size: 20px;
+  }
+}
+
 .attack-phase-container .turn-indicator {
   font-size: 2rem;
   transform-origin: center;
@@ -559,6 +578,12 @@ main {
 
   .attack-phase-container .turn-indicator.left {
     transform: rotate(180deg);
+  }
+}
+
+@media screen and (min-width: 1920px) {
+  .attack-phase-container .turn-indicator {
+    font-size: 3rem;
   }
 }
 
